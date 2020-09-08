@@ -227,15 +227,18 @@ func (p *Parser) parseMacro() (PreprocStmt, error) {
 	}
 	name := lit
 	var vars []string
-	tok, vars = p.parseVars()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
+	for {
+		tok, lit = p.scanIgnoreWhitespace()
+		if tok != IDENT {
+			return nil, fmt.Errorf("found %q, expected ident", lit)
+		}
+		vars = append(vars, lit)
+		if tok, _ := p.scanIgnoreWhitespace(); tok != COMMA {
+			p.unscan()
+			break
+		}
 	}
 	var body []PreprocStmt
 	tok, body = p.parseBody()
 	return &MacroStmt{name: name, vars: vars, body: body}, nil
-}
-
-func (p *Parser) parseVars() (PreprocStmt, []string) {
-
 }
