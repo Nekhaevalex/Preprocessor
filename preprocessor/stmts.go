@@ -1,52 +1,58 @@
 package preprocessor
 
 //PreprocStmt - preprocessor statement
-type PreprocStmt interface{}
+type PreprocStmt interface {
+}
+
+//PreprocProg - instance of parsed code
+type PreprocProg struct {
+	Body []PreprocStmt
+}
 
 //ImportStmt - import statement
 type ImportStmt struct {
-	importFile string
+	ImportFile string
 }
 
 //DefStmt - define statement
 type DefStmt struct {
-	definitionName string
-	toDef          PreprocStmt
+	DefinitionName string
+	ToDef          PreprocStmt
 }
 
 //PextStmt - pext declaration statement
 type PextStmt struct {
-	pextName    string
-	pextAddress string
+	PextName    string
+	PextAddress string
 }
 
 //ErrorStmt - error message statement
 type ErrorStmt struct {
-	errorMsg string
+	ErrorMsg string
 }
 
 //PragmaStmt - pragma stmt
 type PragmaStmt struct {
-	pragmaName string
+	PragmaName string
 }
 
 //LineStmt - insert line stmt
 type LineStmt struct {
-	lineNumber string
-	fileName   string
+	LineNumber string
+	FileName   string
 }
 
 //MsgStmt - message stmt
 type MsgStmt struct {
-	msg string
+	Msg string
 }
 
 //IfStmt - if stmt
 type IfStmt struct {
-	defName     string
-	negative    bool
-	branch1body []PreprocStmt
-	branch2body []PreprocStmt
+	DefName     string
+	Negative    bool
+	Branch1body []PreprocStmt
+	Branch2body []PreprocStmt
 }
 
 //SumStmt - sumdef
@@ -63,17 +69,17 @@ type ResStmt struct {
 
 //UndefStmt - undef
 type UndefStmt struct {
-	defName string
+	DefName string
 }
 
 //ReturnStmt - return
 type ReturnStmt struct {
-	returnName string
+	ReturnName string
 }
 
 //MacroStmt - macro
 type MacroStmt struct {
-	name string
-	vars []string
-	body []PreprocStmt
+	Name string
+	Vars []string
+	Body []PreprocStmt
 }

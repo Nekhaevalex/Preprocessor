@@ -48,12 +48,29 @@ func (p *Parser) scanIgnoreWhitespace() (tok Token, lit string) {
 	if tok == WS {
 		tok, lit = p.scan()
 	}
-	return
+	return tok, lit
+}
+
+//ParseFile parses the whole file
+func (p *Parser) ParseFile() (PreprocProg, error) {
+	var prog PreprocProg
+	for {
+		stmt, err := p.Parse()
+		if stmt == EOF {
+			break
+		}
+		if err != nil {
+			return prog, err
+		}
+		prog.Body = append(prog.Body, PreprocStmt(stmt))
+	}
+	return prog, nil
 }
 
 //Parse parses the file
 func (p *Parser) Parse() (PreprocStmt, error) {
-	tok, _ := p.scanIgnoreWhitespace()
+	tok, lit := p.scanIgnoreWhitespace()
+	fmt.Printf("Parsing lit: %s\n", lit)
 	var stmt PreprocStmt
 	var er error
 	switch tok {
@@ -61,6 +78,34 @@ func (p *Parser) Parse() (PreprocStmt, error) {
 		stmt, er = p.parseImport()
 	case DEFINE:
 		stmt, er = p.parseDefine()
+	case PEXT:
+		stmt, er = p.parsePext()
+	case ERROR:
+		stmt, er = p.parseError()
+	case PRAGMA:
+		stmt, er = p.parsePragma()
+	case LINE:
+		stmt, er = p.parseLine()
+	case MESSAGE:
+		stmt, er = p.parseMsg()
+	case IFDEF:
+		stmt, er = p.parseIf(false)
+	case IFNDEF:
+		stmt, er = p.parseIf(true)
+	case ENDIF:
+		return nil, ErrEndIf
+	case ELSE:
+		return nil, ErrElseBranch
+	case SUMDEF:
+		stmt, er = p.parseSum()
+	case RESDEF:
+		stmt, er = p.parseRes()
+	case UNDEF:
+		stmt, er = p.parseUndef()
+	case RETURN:
+		stmt, er = p.parseReturn()
+	case MACRO:
+		stmt, er = p.parseMacro()
 	}
 	return stmt, er
 }
@@ -71,7 +116,7 @@ func (p *Parser) parseImport() (PreprocStmt, error) {
 		return nil, fmt.Errorf("found %q, expected ident", lit)
 	}
 
-	return &ImportStmt{importFile: lit}, nil
+	return &ImportStmt{ImportFile: lit}, nil
 }
 
 func (p *Parser) parseDefine() (PreprocStmt, error) {
@@ -81,7 +126,7 @@ func (p *Parser) parseDefine() (PreprocStmt, error) {
 	}
 	defName := lit
 	toDef, _ := p.Parse()
-	return &DefStmt{definitionName: defName, toDef: toDef}, nil
+	return &DefStmt{DefinitionName: defName, ToDef: toDef}, nil
 }
 
 func (p *Parser) parsePext() (PreprocStmt, error) {
@@ -95,7 +140,7 @@ func (p *Parser) parsePext() (PreprocStmt, error) {
 		return nil, fmt.Errorf("found %q, expected ident", lit)
 	}
 	pextAdr := lit
-	return &PextStmt{pextName: pextName, pextAddress: pextAdr}, nil
+	return &PextStmt{PextName: pextName, PextAddress: pextAdr}, nil
 }
 
 func (p *Parser) parseError() (PreprocStmt, error) {
@@ -104,7 +149,7 @@ func (p *Parser) parseError() (PreprocStmt, error) {
 		return nil, fmt.Errorf("found %q, expected ident", lit)
 	}
 	errorMsg := lit
-	return &ErrorStmt{errorMsg: errorMsg}, nil
+	return &ErrorStmt{ErrorMsg: errorMsg}, nil
 }
 
 func (p *Parser) parsePragma() (PreprocStmt, error) {
@@ -113,7 +158,7 @@ func (p *Parser) parsePragma() (PreprocStmt, error) {
 		return nil, fmt.Errorf("found %q, expected ident", lit)
 	}
 	pragma := lit
-	return &PragmaStmt{pragmaName: pragma}, nil
+	return &PragmaStmt{PragmaName: pragma}, nil
 }
 
 func (p *Parser) parseLine() (PreprocStmt, error) {
@@ -127,7 +172,7 @@ func (p *Parser) parseLine() (PreprocStmt, error) {
 		return nil, fmt.Errorf("found %q, expected ident", lit)
 	}
 	fileName := lit
-	return &LineStmt{lineNumber: lineNum, fileName: fileName}, nil
+	return &LineStmt{LineNumber: lineNum, FileName: fileName}, nil
 }
 
 func (p *Parser) parseMsg() (PreprocStmt, error) {
@@ -135,7 +180,7 @@ func (p *Parser) parseMsg() (PreprocStmt, error) {
 	if tok != IDENT {
 		return nil, fmt.Errorf("found %q, expected ident", lit)
 	}
-	return &MsgStmt{msg: lit}, nil
+	return &MsgStmt{Msg: lit}, nil
 }
 
 func (p *Parser) parseIf(negative bool) (PreprocStmt, error) {
@@ -173,7 +218,7 @@ func (p *Parser) parseIf(negative bool) (PreprocStmt, error) {
 	} else {
 		branchElse = nil
 	}
-	return &IfStmt{defName: defName, negative: neg, branch1body: branchIf, branch2body: branchElse}, nil
+	return &IfStmt{DefName: defName, Negative: neg, Branch1body: branchIf, Branch2body: branchElse}, nil
 }
 
 func (p *Parser) parseSum() (PreprocStmt, error) {
@@ -209,7 +254,7 @@ func (p *Parser) parseUndef() (PreprocStmt, error) {
 	if tok != IDENT {
 		return nil, fmt.Errorf("found %q, expected ident", lit)
 	}
-	return &UndefStmt{defName: lit}, nil
+	return &UndefStmt{DefName: lit}, nil
 }
 
 func (p *Parser) parseReturn() (PreprocStmt, error) {
@@ -217,7 +262,7 @@ func (p *Parser) parseReturn() (PreprocStmt, error) {
 	if tok != IDENT {
 		return nil, fmt.Errorf("found %q, expected ident", lit)
 	}
-	return &ReturnStmt{returnName: lit}, nil
+	return &ReturnStmt{ReturnName: lit}, nil
 }
 
 func (p *Parser) parseMacro() (PreprocStmt, error) {
@@ -239,6 +284,18 @@ func (p *Parser) parseMacro() (PreprocStmt, error) {
 		}
 	}
 	var body []PreprocStmt
-	tok, body = p.parseBody()
-	return &MacroStmt{name: name, vars: vars, body: body}, nil
+	body = p.parseBody()
+	return &MacroStmt{Name: name, Vars: vars, Body: body}, nil
+}
+
+func (p *Parser) parseBody() []PreprocStmt {
+	var body []PreprocStmt
+	for {
+		stmt, err := p.Parse()
+		if err == ErrMacroEnd {
+			break
+		}
+		body = append(body, stmt)
+	}
+	return body
 }
