@@ -1,4 +1,4 @@
-package preprocessor
+package libpreproc
 
 import (
 	"bufio"
@@ -55,6 +55,9 @@ func (s *Scanner) Scan() (tok Token, lit string) {
 	} else if isLetter(ch) {
 		s.unread()
 		return s.scanIdent()
+	} else if isDigit(ch) {
+		s.unread()
+		return s.scanIdent()
 	}
 
 	switch ch {
@@ -87,7 +90,7 @@ func (s *Scanner) scanWhitespace() (tok Token, lit string) {
 	return WS, buf.String()
 }
 
-// scanWhitespace consumes the current rune and all contiguous whitespace.
+// scanIdent consumes the current rune and all contiguous whitespace.
 func (s *Scanner) scanIdent() (tok Token, lit string) {
 	var buf bytes.Buffer
 	buf.WriteRune(s.read())
@@ -95,7 +98,7 @@ func (s *Scanner) scanIdent() (tok Token, lit string) {
 	for {
 		if ch := s.read(); ch == eof {
 			break
-		} else if !isLetter(ch) && !isDigit(ch) && ch != ' ' {
+		} else if !isLetter(ch) && !isDigit(ch) && ch != '_' {
 			s.unread()
 			break
 		} else {
@@ -138,6 +141,24 @@ func (s *Scanner) scanIdent() (tok Token, lit string) {
 		return MACRO, buf.String()
 	case "#endmacro":
 		return ENDMACRO, buf.String()
+	case "add":
+		return ADD, buf.String()
+	case "mov":
+		return MOV, buf.String()
+	case "in":
+		return IN, buf.String()
+	case "out":
+		return OUT, buf.String()
+	case "cmp":
+		return CMP, buf.String()
+	case "jmp":
+		return JMP, buf.String()
+	case "jnc":
+		return JNC, buf.String()
+	case "a":
+		return A, buf.String()
+	case "b":
+		return B, buf.String()
 	}
 	return IDENT, buf.String()
 }

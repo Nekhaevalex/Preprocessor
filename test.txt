@@ -1,0 +1,13 @@
+#define A 1
+#define B 2
+#define C A
+
+#macro tst ab, ba, Cc
+    mov a, B
+    out C
+#endmacro
+
+#ifdef A
+    #define D 0
+    mov a, b
+#endif

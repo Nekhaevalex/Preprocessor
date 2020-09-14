@@ -1,4 +1,16 @@
-package preprocessor
+package libpreproc
+
+//Reg - register type
+type Reg int
+
+const (
+	a Reg = 0
+	b Reg = 1
+)
+
+//PreprocIdent - preprocessor identifier
+type PreprocIdent interface {
+}
 
 //PreprocStmt - preprocessor statement
 type PreprocStmt interface {
@@ -82,4 +94,49 @@ type MacroStmt struct {
 	Name string
 	Vars []string
 	Body []PreprocStmt
+}
+
+//AsmStmt - assembler stmt
+type AsmStmt interface {
+}
+
+//AddStmt - add
+type AddStmt struct {
+	arg1 Reg
+	arg2 Reg
+	fa   string
+}
+
+//MovStmt - mov
+type MovStmt struct {
+	arg1 Reg
+	arg2 Reg
+	fa   PreprocIdent
+}
+
+//InStmt - in
+type InStmt struct {
+	arg Reg
+}
+
+//OutStmt - out
+type OutStmt struct {
+	arg PreprocIdent
+}
+
+//CmpStmt - cmp
+type CmpStmt struct {
+	arg1 Reg
+	arg2 Reg
+	fa   PreprocIdent
+}
+
+//JmpStmt - jmp
+type JmpStmt struct {
+	arg PreprocIdent
+}
+
+//JncStmt - jnc
+type JncStmt struct {
+	arg PreprocIdent
 }

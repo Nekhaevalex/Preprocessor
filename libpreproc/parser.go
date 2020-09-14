@@ -1,4 +1,4 @@
-package preprocessor
+package libpreproc
 
 import (
 	"fmt"
@@ -70,7 +70,6 @@ func (p *Parser) ParseFile() (PreprocProg, error) {
 //Parse parses the file
 func (p *Parser) Parse() (PreprocStmt, error) {
 	tok, lit := p.scanIgnoreWhitespace()
-	fmt.Printf("Parsing lit: %s\n", lit)
 	var stmt PreprocStmt
 	var er error
 	switch tok {
@@ -106,6 +105,14 @@ func (p *Parser) Parse() (PreprocStmt, error) {
 		stmt, er = p.parseReturn()
 	case MACRO:
 		stmt, er = p.parseMacro()
+	case ENDMACRO:
+		return nil, ErrMacroEnd
+	case EOF:
+		return EOF, nil
+	case IDENT:
+		return IDENT, nil
+	default:
+		fmt.Printf("Unknown token: %s\n", lit)
 	}
 	return stmt, er
 }
@@ -298,4 +305,31 @@ func (p *Parser) parseBody() []PreprocStmt {
 		body = append(body, stmt)
 	}
 	return body
+}
+
+func (p *Parser) parseAdd() (AsmStmt, error) {
+	tok, lit := p.scanIgnoreWhitespace()
+	var arg1 Reg
+	var arg2 Reg
+	switch tok {
+	case A:
+		arg1 = a
+	case B:
+		arg1 = b
+	default:
+		fmt.Printf("Unknown identifier: %s\n", lit)
+	}
+	tok, lit = p.scanIgnoreWhitespace()
+	if tok == COMMA {
+		tok, lit = p.scanIgnoreWhitespace()
+	}
+	switch tok {
+	case A:
+		arg2 = a
+	case B:
+		arg2 = b
+	default:
+		fmt.Printf("Unknown identifier: %s\n", lit)
+	}
+
 }

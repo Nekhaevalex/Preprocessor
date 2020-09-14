@@ -1,4 +1,4 @@
-package preprocessor
+package libpreproc
 
 //Token represents a lexical token
 type Token int
@@ -15,6 +15,8 @@ const (
 
 	//IDENT - Literals
 	IDENT
+	//DIGIT - 0-9
+	DIGIT
 
 	//Misc characters
 
@@ -22,6 +24,8 @@ const (
 	COMMA
 
 	//Keywords
+
+	/* Preprocessor keywords */
 
 	//IMPORT - #import
 	IMPORT
@@ -57,4 +61,28 @@ const (
 	MACRO
 	//ENDMACRO - #endmacro
 	ENDMACRO
+
+	/*Assembler keywords*/
+
+	//ADD - e.g. add a, b
+	ADD
+	//MOV - e.g. mov a, b
+	MOV
+	//IN - e.g. in a
+	IN
+	//OUT - e.g. out a
+	OUT
+	//CMP - e.g. cmp a, b, 1
+	CMP
+	//JMP - e.g. jmp label
+	JMP
+	//JNC - e.g. jnc label
+	JNC
+
+	/*Reg keywords*/
+
+	//A - a reg
+	A
+	//B - b reg
+	B
 )
