@@ -60,6 +60,7 @@ func PrintNode(line interface{}) {
 			fmt.Printf("%d\t%s\n", num, vars)
 		}
 		depth++
+		fmt.Print(v.Body)
 		for _, b1 := range v.Body {
 			PrintNode(b1)
 		}

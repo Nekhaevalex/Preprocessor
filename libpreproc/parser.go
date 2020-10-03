@@ -3,6 +3,7 @@ package libpreproc
 import (
 	"fmt"
 	"io"
+	"strconv"
 )
 
 //Parser represents a parser
@@ -310,7 +311,6 @@ func (p *Parser) parseBody() []PreprocStmt {
 func (p *Parser) parseAdd() (AsmStmt, error) {
 	tok, lit := p.scanIgnoreWhitespace()
 	var arg1 Reg
-	var arg2 Reg
 	switch tok {
 	case A:
 		arg1 = a
@@ -323,13 +323,9 @@ func (p *Parser) parseAdd() (AsmStmt, error) {
 	if tok == COMMA {
 		tok, lit = p.scanIgnoreWhitespace()
 	}
-	switch tok {
-	case A:
-		arg2 = a
-	case B:
-		arg2 = b
-	default:
-		fmt.Printf("Unknown identifier: %s\n", lit)
+	i, err := strconv.Atoi(lit)
+	if err != nil {
+		return nil, fmt.Errorf("Can't parse %s as integer", lit)
 	}
-
+	return &AddStmt{arg1: arg1, fa: i}, nil
 }

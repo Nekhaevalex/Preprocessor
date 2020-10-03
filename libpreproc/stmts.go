@@ -103,8 +103,7 @@ type AsmStmt interface {
 //AddStmt - add
 type AddStmt struct {
 	arg1 Reg
-	arg2 Reg
-	fa   string
+	fa   int
 }
 
 //MovStmt - mov
