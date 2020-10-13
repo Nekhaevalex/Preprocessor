@@ -329,3 +329,30 @@ func (p *Parser) parseAdd() (AsmStmt, error) {
 	}
 	return &AddStmt{arg1: arg1, fa: i}, nil
 }
+
+func (p *Parser) parseMov() (AsmStmt, error) {
+	tok, lit := p.scanIgnoreWhitespace()
+	var arg1 Reg
+	switch tok {
+	case A:
+		arg1 = a
+	case B:
+		arg1 = b
+	default:
+		fmt.Printf("Unknown identifier: %s\n", lit)
+	}
+	tok, lit = p.scanIgnoreWhitespace()
+	var arg2 Reg
+	var fa int
+	switch tok {
+	case A:
+		arg2 = a
+	case B:
+		arg2 = b
+	case DIGIT:
+		fa, _ = strconv.Atoi(lit)
+	default:
+		fmt.Printf("Unknowm identifier: %s\n", lit)
+	}
+	return
+}
