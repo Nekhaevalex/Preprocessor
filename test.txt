@@ -1,13 +1,8 @@
-#define A 1
-#define B 2
-#define C A
+section .import
+    #import "stdio.h"
+section .macro
 
-#macro tst ab, ba, Cc
-    mov a, B
-    out C
-#endmacro
+section .text
+    #define T 10
+    #warn "Hello, World!"
 
-#ifdef A
-    #define D 0
-    mov a, b
-#endif

@@ -17,16 +17,30 @@ const (
 	IDENT
 	//DIGIT - 0-9
 	DIGIT
+	//NUMBER - DIGIT+DIGIT+...
+	NUMBER
+	//MACROCALL - Literal equal to some macro name
+	MACROCALL
+	//DIRECTIVE - Preprocessor directive
+	DIRECTIVE
+	//QUOTE - "
+	QUOTE
 
 	//Misc characters
 
 	//COMMA - ,
 	COMMA
+	//SEMI - ;
+	SEMI
+	//COLON - :
+	COLON
 
 	//Keywords
 
 	/* Preprocessor keywords */
 
+	//SECTION - section
+	SECTION
 	//IMPORT - #import
 	IMPORT
 	//DEFINE - #define
@@ -39,8 +53,8 @@ const (
 	PRAGMA
 	//LINE - #line
 	LINE
-	//MESSAGE - #message
-	MESSAGE
+	//WARN - #warn
+	WARN
 	//IFDEF - #ifdef
 	IFDEF
 	//IFNDEF - #ifndef

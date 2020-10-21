@@ -12,9 +12,5 @@ func main() {
 	file, _ := os.Open(filename)
 	fmt.Printf("Parsing %s...\n\n", filename)
 	stmt, _ := p.NewParser(bufio.NewReader(file)).ParseFile()
-	body := stmt.Body
-	fmt.Printf("Printing AST:\n")
-	for _, a := range body {
-		p.PrintNode(a)
-	}
+	p.PrintProg(stmt)
 }

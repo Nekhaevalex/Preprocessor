@@ -7,11 +7,11 @@ import (
 )
 
 func isWhiteSpace(ch rune) bool {
-	return ch == ' ' || ch == '\t' || ch == '\n'
+	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }
 
 func isLetter(ch rune) bool {
-	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '#'
+	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '#' || ch == '.'
 }
 
 func isDigit(ch rune) bool {
@@ -65,6 +65,10 @@ func (s *Scanner) Scan() (tok Token, lit string) {
 		return EOF, ""
 	case ',':
 		return COMMA, string(ch)
+	case ';':
+		return SEMI, string(ch)
+	case '"':
+		return QUOTE, string(ch)
 	}
 	return ILLEGAL, string(ch)
 }
@@ -107,6 +111,8 @@ func (s *Scanner) scanIdent() (tok Token, lit string) {
 	}
 
 	switch buf.String() {
+	case "section":
+		return SECTION, buf.String()
 	case "#import":
 		return IMPORT, buf.String()
 	case "#define":
@@ -120,7 +126,7 @@ func (s *Scanner) scanIdent() (tok Token, lit string) {
 	case "#line":
 		return LINE, buf.String()
 	case "#warn":
-		return MESSAGE, buf.String()
+		return WARN, buf.String()
 	case "#ifdef":
 		return IFDEF, buf.String()
 	case "#ifndef":
@@ -160,5 +166,6 @@ func (s *Scanner) scanIdent() (tok Token, lit string) {
 	case "b":
 		return B, buf.String()
 	}
+
 	return IDENT, buf.String()
 }

@@ -2,69 +2,57 @@ package libpreproc
 
 import "fmt"
 
-var depth int = 0
-
-func printWS() {
-	i := 0
-	for i < depth {
-		fmt.Printf(".")
-		i++
+//PrintProg - prints program AST
+func PrintProg(prg Program) {
+	fmt.Printf("program\n")
+	for _, v := range prg.sections {
+		printSection(v)
 	}
 }
 
-//PrintNode - print tree
-func PrintNode(line interface{}) {
-	printWS()
-	switch v := line.(type) {
-	case *ImportStmt:
-		fmt.Printf("Import: %s\n", v.ImportFile)
-	case *DefStmt:
-		fmt.Printf("Definition: %s <- %s\n", v.DefinitionName, v.ToDef)
-	case *PextStmt:
-		fmt.Printf("Pext: %s at %s\n", v.PextName, v.PextAddress)
-	case *ErrorStmt:
-		fmt.Printf("Error: %s\n", v.ErrorMsg)
-	case *PragmaStmt:
-		fmt.Printf("Pragma: %s\n", v.PragmaName)
-	case *LineStmt:
-		fmt.Printf("Line %s from %s\n", v.LineNumber, v.FileName)
-	case *MsgStmt:
-		fmt.Printf("Message: %s\n", v.Msg)
-	case *IfStmt:
-		fmt.Printf("%t if on %s\n", v.Negative, v.DefName)
-		depth++
-		for _, b1 := range v.Branch1body {
-			PrintNode(b1)
-		}
-		depth--
-		if v.Branch2body != nil {
-			fmt.Printf("Else\n")
-			depth++
-			for _, b2 := range v.Branch2body {
-				PrintNode(b2)
-			}
-			depth--
-		}
-		fmt.Printf("End if\n")
-	case *SumStmt:
-		fmt.Printf("%s += %s\n", v.X, v.Y)
-	case *ResStmt:
-		fmt.Printf("%s -= %s\n", v.X, v.Y)
-	case *UndefStmt:
-		fmt.Printf("Undef: %s\n", v.DefName)
-	case *ReturnStmt:
-		fmt.Printf("Return: %s\n", v.ReturnName)
-	case *MacroStmt:
-		fmt.Printf("Macro Decl: %s\nVars:\n", v.Name)
-		for num, vars := range v.Vars {
-			fmt.Printf("%d\t%s\n", num, vars)
-		}
-		depth++
-		fmt.Print(v.Body)
-		for _, b1 := range v.Body {
-			PrintNode(b1)
-		}
-		depth--
-		fmt.Printf("Macro end\n")
+func printSection(sec Section) {
+	fmt.Printf("\tsection\n")
+	fmt.Printf("\t\tsection_name: %s\n", sec.sectionName)
+	fmt.Printf("\t\tsection_data:\n")
+	printBlock(sec.sectionContent)
+}
+
+func printBlock(blk Block) {
+	for _, v := range blk.elements {
+		fmt.Printf("\t\t\t")
+		estimateStmt(v)
 	}
+}
+
+func estimateStmt(stmt interface{}) {
+	switch stmt.(type) {
+	case *Define:
+		v, _ := stmt.(*Define)
+		printDefine(v)
+	case *Import:
+		v, _ := stmt.(*Import)
+		printImport(v)
+	case *Line:
+		v, _ := stmt.(*Line)
+		printLine(v)
+	case *Warn:
+		v, _ := stmt.(*Warn)
+		printWarn(v)
+	}
+}
+
+func printDefine(define *Define) {
+	fmt.Printf("define_directive: (%s -> %s)\n", define.definition, define.name)
+}
+
+func printImport(imprt *Import) {
+	fmt.Printf("import_directive: (%s)\n", imprt.name)
+}
+
+func printLine(line *Line) {
+	fmt.Printf("line_directive: from %s paste line %s\n", line.name, line.lineNumber)
+}
+
+func printWarn(warn *Warn) {
+	fmt.Printf("warn_directive: %s\n", warn.message)
 }

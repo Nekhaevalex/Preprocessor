@@ -3,7 +3,6 @@ package libpreproc
 import (
 	"fmt"
 	"io"
-	"strconv"
 )
 
 //Parser represents a parser
@@ -52,307 +51,191 @@ func (p *Parser) scanIgnoreWhitespace() (tok Token, lit string) {
 	return tok, lit
 }
 
+func (p *Parser) getStringValue() string {
+	tok, lit := p.scanIgnoreWhitespace()
+	var str string
+	for tok != QUOTE {
+		str = str + lit
+		tok, lit = p.scanIgnoreWhitespace()
+	}
+	return str
+}
+
 //ParseFile parses the whole file
-func (p *Parser) ParseFile() (PreprocProg, error) {
-	var prog PreprocProg
+func (p *Parser) ParseFile() (Program, error) {
+	var prog Program
+	var er error
+	for {
+		tok, lit := p.scanIgnoreWhitespace()
+		if tok == EOF {
+			break
+		}
+		var section Section
+		if tok == SECTION {
+			tok, lit = p.scanIgnoreWhitespace()
+			if tok != IDENT {
+				return prog, fmt.Errorf("found %q, expected section name", lit)
+			}
+			section.sectionName = lit
+			section.sectionContent, er = p.ParseBlock()
+			if er != nil {
+				return prog, er
+			}
+			prog.sections = append(prog.sections, section)
+		}
+	}
+	return prog, nil
+}
+
+//ParseBlock parses one section
+func (p *Parser) ParseBlock() (Block, error) {
+	var block Block
 	for {
 		stmt, err := p.Parse()
 		if stmt == EOF {
 			break
 		}
 		if err != nil {
-			return prog, err
+			return block, err
 		}
-		prog.Body = append(prog.Body, PreprocStmt(stmt))
+		block.elements = append(block.elements, stmt)
 	}
-	return prog, nil
+	return block, nil
 }
 
-//Parse parses the file
-func (p *Parser) Parse() (PreprocStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	var stmt PreprocStmt
+//Parse parses all keywords and calls their handlers
+func (p *Parser) Parse() (Stmt, error) {
+	tok, _ := p.scanIgnoreWhitespace()
+	var stmt Stmt
 	var er error
 	switch tok {
-	case IMPORT:
-		stmt, er = p.parseImport()
+	case SECTION:
+		p.unscan()
+		stmt, er = EOF, nil
 	case DEFINE:
-		stmt, er = p.parseDefine()
-	case PEXT:
-		stmt, er = p.parsePext()
-	case ERROR:
-		stmt, er = p.parseError()
-	case PRAGMA:
-		stmt, er = p.parsePragma()
+		stmt, er = p.ParseDefine()
+	case IMPORT:
+		stmt, er = p.ParseImport()
 	case LINE:
-		stmt, er = p.parseLine()
-	case MESSAGE:
-		stmt, er = p.parseMsg()
-	case IFDEF:
-		stmt, er = p.parseIf(false)
-	case IFNDEF:
-		stmt, er = p.parseIf(true)
-	case ENDIF:
-		return nil, ErrEndIf
-	case ELSE:
-		return nil, ErrElseBranch
+		stmt, er = p.ParseLine()
+	case WARN:
+		stmt, er = p.ParseWarn()
 	case SUMDEF:
-		stmt, er = p.parseSum()
+		stmt, er = p.ParseSumDef()
 	case RESDEF:
-		stmt, er = p.parseRes()
-	case UNDEF:
-		stmt, er = p.parseUndef()
-	case RETURN:
-		stmt, er = p.parseReturn()
-	case MACRO:
-		stmt, er = p.parseMacro()
-	case ENDMACRO:
-		return nil, ErrMacroEnd
+		stmt, er = p.ParseResDef()
+	case PEXT:
+		stmt, er = p.ParsePext()
 	case EOF:
-		return EOF, nil
-	case IDENT:
-		return IDENT, nil
-	default:
-		fmt.Printf("Unknown token: %s\n", lit)
+		stmt = EOF
+		er = nil
 	}
 	return stmt, er
 }
 
-func (p *Parser) parseImport() (PreprocStmt, error) {
+//ParseDefine - #define
+func (p *Parser) ParseDefine() (Stmt, error) {
 	tok, lit := p.scanIgnoreWhitespace()
 	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
+		return nil, fmt.Errorf("found %q, expected definition identifier", lit)
 	}
-
-	return &ImportStmt{ImportFile: lit}, nil
+	name := lit
+	tok, lit = p.scanIgnoreWhitespace()
+	if tok != IDENT {
+		return nil, fmt.Errorf("found %q, expected definition identifier", lit)
+	}
+	definition := lit
+	return &Define{name: name, definition: definition}, nil
 }
 
-func (p *Parser) parseDefine() (PreprocStmt, error) {
+//ParseImport - #import
+func (p *Parser) ParseImport() (Stmt, error) {
 	tok, lit := p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
+	var name string
+	switch tok {
+	case IDENT:
+		name = lit
+	case QUOTE:
+		name = p.getStringValue()
+	default:
+		return nil, fmt.Errorf("found %q, expected import identifier", lit)
 	}
-	defName := lit
-	toDef, _ := p.Parse()
-	return &DefStmt{DefinitionName: defName, ToDef: toDef}, nil
+	return &Import{name: name}, nil
 }
 
-func (p *Parser) parsePext() (PreprocStmt, error) {
+//ParseLine - #line
+func (p *Parser) ParseLine() (Stmt, error) {
 	tok, lit := p.scanIgnoreWhitespace()
 	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
+		return nil, fmt.Errorf("found %q, expected line source indetifier", lit)
+	}
+	name := lit
+	tok, lit = p.scanIgnoreWhitespace()
+	if tok != IDENT {
+		return nil, fmt.Errorf("found %q, expected line number identifier", lit)
+	}
+	lineNumber := lit
+	return &Line{name: name, lineNumber: lineNumber}, nil
+}
+
+//ParseWarn - #warn
+func (p *Parser) ParseWarn() (Stmt, error) {
+	tok, lit := p.scanIgnoreWhitespace()
+	var message string
+	switch tok {
+	case IDENT:
+		message = lit
+	case QUOTE:
+		message = p.getStringValue()
+	default:
+		return nil, fmt.Errorf("found %q, expected import identifier", lit)
+	}
+	return &Warn{message: message}, nil
+}
+
+//ParseSumDef - #sumdef
+func (p *Parser) ParseSumDef() (Stmt, error) {
+	tok, lit := p.scanIgnoreWhitespace()
+	if tok != IDENT {
+		return nil, fmt.Errorf("found %q, expected definition identifier", lit)
+	}
+	def1 := lit
+	tok, lit = p.scanIgnoreWhitespace()
+	if tok != IDENT {
+		return nil, fmt.Errorf("found %q expected definition identifier", lit)
+	}
+	def2 := lit
+	return &Sumdef{def1: def1, def2: def2}, nil
+}
+
+//ParseResDef - #resdef
+func (p *Parser) ParseResDef() (Stmt, error) {
+	tok, lit := p.scanIgnoreWhitespace()
+	if tok != IDENT {
+		return nil, fmt.Errorf("found %q, expected definition identifier", lit)
+	}
+	def1 := lit
+	tok, lit = p.scanIgnoreWhitespace()
+	if tok != IDENT {
+		return nil, fmt.Errorf("found %q, expected definition identifier", lit)
+	}
+	def2 := lit
+	return &Resdef{def1: def1, def2: def2}, nil
+}
+
+//ParsePext - #pext
+func (p *Parser) ParsePext() (Stmt, error) {
+	tok, lit := p.scanIgnoreWhitespace()
+	if tok != IDENT {
+		return nil, fmt.Errorf("found %q, expected pExt name identifier", lit)
 	}
 	pextName := lit
 	tok, lit = p.scanIgnoreWhitespace()
 	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
+		return nil, fmt.Errorf("found %q, expected pExt mount point identifier", lit)
 	}
-	pextAdr := lit
-	return &PextStmt{PextName: pextName, PextAddress: pextAdr}, nil
+	pextAddress := lit
+	return &Pext{pextName: pextName, pextAddress: pextAddress}, nil
 }
 
-func (p *Parser) parseError() (PreprocStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	errorMsg := lit
-	return &ErrorStmt{ErrorMsg: errorMsg}, nil
-}
-
-func (p *Parser) parsePragma() (PreprocStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	pragma := lit
-	return &PragmaStmt{PragmaName: pragma}, nil
-}
-
-func (p *Parser) parseLine() (PreprocStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	lineNum := lit
-	tok, lit = p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	fileName := lit
-	return &LineStmt{LineNumber: lineNum, FileName: fileName}, nil
-}
-
-func (p *Parser) parseMsg() (PreprocStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	return &MsgStmt{Msg: lit}, nil
-}
-
-func (p *Parser) parseIf(negative bool) (PreprocStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	defName := lit
-	neg := negative
-	var branchIf []PreprocStmt
-	var branchElse []PreprocStmt
-	var errRes error
-	var stmt PreprocStmt
-	var hasSecondBranch bool
-	for {
-		stmt, errRes = p.Parse()
-		if errRes == ErrElseBranch {
-			hasSecondBranch = true
-			break
-		}
-		if errRes == ErrEndIf {
-			hasSecondBranch = false
-			break
-		}
-		branchIf = append(branchIf, stmt)
-	}
-	if hasSecondBranch {
-		for {
-			stmt, errRes = p.Parse()
-			if errRes == ErrEndIf {
-				break
-			}
-			branchElse = append(branchElse, stmt)
-		}
-	} else {
-		branchElse = nil
-	}
-	return &IfStmt{DefName: defName, Negative: neg, Branch1body: branchIf, Branch2body: branchElse}, nil
-}
-
-func (p *Parser) parseSum() (PreprocStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	arg1 := lit
-	tok, lit = p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	arg2 := lit
-	return &SumStmt{X: arg1, Y: arg2}, nil
-}
-
-func (p *Parser) parseRes() (PreprocStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	arg1 := lit
-	tok, lit = p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	arg2 := lit
-	return &ResStmt{X: arg1, Y: arg2}, nil
-}
-
-func (p *Parser) parseUndef() (PreprocStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	return &UndefStmt{DefName: lit}, nil
-}
-
-func (p *Parser) parseReturn() (PreprocStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	return &ReturnStmt{ReturnName: lit}, nil
-}
-
-func (p *Parser) parseMacro() (PreprocStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	if tok != IDENT {
-		return nil, fmt.Errorf("found %q, expected ident", lit)
-	}
-	name := lit
-	var vars []string
-	for {
-		tok, lit = p.scanIgnoreWhitespace()
-		if tok != IDENT {
-			return nil, fmt.Errorf("found %q, expected ident", lit)
-		}
-		vars = append(vars, lit)
-		if tok, _ := p.scanIgnoreWhitespace(); tok != COMMA {
-			p.unscan()
-			break
-		}
-	}
-	var body []PreprocStmt
-	body = p.parseBody()
-	return &MacroStmt{Name: name, Vars: vars, Body: body}, nil
-}
-
-func (p *Parser) parseBody() []PreprocStmt {
-	var body []PreprocStmt
-	for {
-		stmt, err := p.Parse()
-		if err == ErrMacroEnd {
-			break
-		}
-		body = append(body, stmt)
-	}
-	return body
-}
-
-func (p *Parser) parseAdd() (AsmStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	var arg1 Reg
-	switch tok {
-	case A:
-		arg1 = a
-	case B:
-		arg1 = b
-	default:
-		fmt.Printf("Unknown identifier: %s\n", lit)
-	}
-	tok, lit = p.scanIgnoreWhitespace()
-	if tok == COMMA {
-		tok, lit = p.scanIgnoreWhitespace()
-	}
-	i, err := strconv.Atoi(lit)
-	if err != nil {
-		return nil, fmt.Errorf("Can't parse %s as integer", lit)
-	}
-	return &AddStmt{arg1: arg1, fa: i}, nil
-}
-
-func (p *Parser) parseMov() (AsmStmt, error) {
-	tok, lit := p.scanIgnoreWhitespace()
-	var arg1 Reg
-	switch tok {
-	case A:
-		arg1 = a
-	case B:
-		arg1 = b
-	default:
-		fmt.Printf("Unknown identifier: %s\n", lit)
-	}
-	tok, lit = p.scanIgnoreWhitespace()
-	var arg2 Reg
-	var fa int
-	switch tok {
-	case A:
-		arg2 = a
-	case B:
-		arg2 = b
-	case DIGIT:
-		fa, _ = strconv.Atoi(lit)
-	default:
-		fmt.Printf("Unknowm identifier: %s\n", lit)
-	}
-	return
-}
+//ParseError - #error

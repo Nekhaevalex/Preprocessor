@@ -8,134 +8,155 @@ const (
 	b Reg = 1
 )
 
-//PreprocIdent - preprocessor identifier
-type PreprocIdent interface {
+//Ident - identifier
+type Ident interface {
 }
 
-//PreprocStmt - preprocessor statement
-type PreprocStmt interface {
+//Program - program object
+type Program struct {
+	sections []Section
 }
 
-//PreprocProg - instance of parsed code
-type PreprocProg struct {
-	Body []PreprocStmt
+//Stmt - program statement (Section/Directive/Opcode/Label)
+type Stmt interface {
 }
 
-//ImportStmt - import statement
-type ImportStmt struct {
-	ImportFile string
+//Section - program section
+type Section struct {
+	sectionName    string
+	sectionContent Block
 }
 
-//DefStmt - define statement
-type DefStmt struct {
-	DefinitionName string
-	ToDef          PreprocStmt
+//Block - program block
+type Block struct {
+	elements []Stmt
 }
 
-//PextStmt - pext declaration statement
-type PextStmt struct {
-	PextName    string
-	PextAddress string
+//Directives
+
+//Define - #define
+type Define struct {
+	name       Ident
+	definition Ident
 }
 
-//ErrorStmt - error message statement
-type ErrorStmt struct {
-	ErrorMsg string
+//Import - #import
+type Import struct {
+	name Ident
 }
 
-//PragmaStmt - pragma stmt
-type PragmaStmt struct {
-	PragmaName string
+//Line - #line
+type Line struct {
+	name       Ident
+	lineNumber Ident
 }
 
-//LineStmt - insert line stmt
-type LineStmt struct {
-	LineNumber string
-	FileName   string
+//Warn - #warn
+type Warn struct {
+	message Ident
 }
 
-//MsgStmt - message stmt
-type MsgStmt struct {
-	Msg string
+//Sumdef - #sumdef {
+type Sumdef struct {
+	def1 Ident
+	def2 Ident
 }
 
-//IfStmt - if stmt
-type IfStmt struct {
-	DefName     string
-	Negative    bool
-	Branch1body []PreprocStmt
-	Branch2body []PreprocStmt
+//Resdef - #resdef
+type Resdef struct {
+	def1 Ident
+	def2 Ident
 }
 
-//SumStmt - sumdef
-type SumStmt struct {
-	X string
-	Y string
+//Pext - #pext
+type Pext struct {
+	pextName    Ident
+	pextAddress Ident
 }
 
-//ResStmt - resdef
-type ResStmt struct {
-	X string
-	Y string
+//Error - #error
+type Error struct {
+	message Ident
 }
 
-//UndefStmt - undef
-type UndefStmt struct {
-	DefName string
+//Undef - #undef
+type Undef struct {
+	definition Ident
 }
 
-//ReturnStmt - return
-type ReturnStmt struct {
-	ReturnName string
+//Ifdef - #ifdef
+type Ifdef struct {
+	definition Ident
+	bodyTrue   Block
+	bodyFalse  Block
 }
 
-//MacroStmt - macro
-type MacroStmt struct {
-	Name string
-	Vars []string
-	Body []PreprocStmt
+//Ifndef - #ifdef
+type Ifndef struct {
+	definition Ident
+	bodyTrue   Block
+	bodyFalse  Block
 }
 
-//AsmStmt - assembler stmt
-type AsmStmt interface {
+//Macro - #macro
+type Macro struct {
+	macroName string
+	args      []Ident
+	body      Block
 }
 
-//AddStmt - add
-type AddStmt struct {
-	arg1 Reg
-	fa   int
+//Opcodes
+
+//Add - add
+type Add struct {
+	reg   Reg
+	value Ident
 }
 
-//MovStmt - mov
-type MovStmt struct {
-	arg1 Reg
-	arg2 Reg
-	fa   PreprocIdent
+//Mov - mov
+type Mov struct {
+	reg1 Reg
+	reg2 Reg
+	fa   Ident
 }
 
-//InStmt - in
-type InStmt struct {
-	arg Reg
+//In - in
+type In struct {
+	reg Reg
 }
 
-//OutStmt - out
-type OutStmt struct {
-	arg PreprocIdent
+//Out - out
+type Out struct {
+	reg Reg
+	fa  Ident
 }
 
-//CmpStmt - cmp
-type CmpStmt struct {
-	arg1 Reg
-	arg2 Reg
-	fa   PreprocIdent
+//Cmp - cmp
+type Cmp struct {
+	regA      Reg
+	regB      Reg
+	operation Ident
 }
 
-//JmpStmt - jmp
-type JmpStmt struct {
-	arg PreprocIdent
+//Jmp - jmp
+type Jmp struct {
+	regB Reg
+	addr Ident
 }
 
-//JncStmt - jnc
-type JncStmt struct {
-	arg PreprocIdent
+//Jnc - jnc
+type Jnc struct {
+	regB Reg
+	addr Ident
+}
+
+//MacroCall - macro call
+type MacroCall struct {
+	macroName string
+	args      []Ident
+}
+
+//Label - label
+type Label struct {
+	name Ident
 }
