@@ -1,8 +1,37 @@
 section .import
     #import "stdio.h"
-section .macro
 
+section .pext
+    #pext "test.pext" 0x10
+
+section .macro
+    #macro test ab bc cd
+        #warn ab
+        #warn bc
+        #warn cd
+    #endmacro
+
+    #macro test2 o
+        #ifdef T
+            #error o
+        #endif
+    #endmacro
 section .text
     #define T 10
+    #define A 1
     #warn "Hello, World!"
-
+    #warn T
+    #sumdef A 10
+    #resdef A 10
+    #undef T
+    #ifdef A
+        #warn "In block 1"
+    #else
+        #warn "In block 2"
+    #endif
+    #ifndef T
+        #warn "In block n 1"
+    #endif
+    #error "End"
+test:
+    #line "text.txt" 7

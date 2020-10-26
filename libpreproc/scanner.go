@@ -69,6 +69,8 @@ func (s *Scanner) Scan() (tok Token, lit string) {
 		return SEMI, string(ch)
 	case '"':
 		return QUOTE, string(ch)
+	case ':':
+		return COLON, string(ch)
 	}
 	return ILLEGAL, string(ch)
 }

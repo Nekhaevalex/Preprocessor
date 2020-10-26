@@ -12,6 +12,24 @@ const (
 type Ident interface {
 }
 
+//SimpleString - specified identifier containing string
+// e.g. "Hello, World"
+type SimpleString struct {
+	value string
+}
+
+//Number - specified identifier contatinig number
+// e.g. 42
+type Number struct {
+	value int
+}
+
+//Variable - specified identifier contatining preprocessor
+// value e.g. A
+type Variable struct {
+	name string
+}
+
 //Program - program object
 type Program struct {
 	sections []Section
@@ -101,8 +119,13 @@ type Ifndef struct {
 //Macro - #macro
 type Macro struct {
 	macroName string
-	args      []Ident
+	args      []string
 	body      Block
+}
+
+//Return - #return
+type Return struct {
+	returnValue Ident
 }
 
 //Opcodes
