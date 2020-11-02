@@ -12,17 +12,11 @@ const (
 	EOF
 	//WS - White space
 	WS
+	//LOC - current location in memory
+	LOC
 
 	//IDENT - Literals
 	IDENT
-	//DIGIT - 0-9
-	DIGIT
-	//NUMBER - DIGIT+DIGIT+...
-	NUMBER
-	//MACROCALL - Literal equal to some macro name
-	MACROCALL
-	//DIRECTIVE - Preprocessor directive
-	DIRECTIVE
 	//QUOTE - "
 	QUOTE
 
@@ -41,6 +35,8 @@ const (
 
 	//SECTION - section
 	SECTION
+	//EOS - end of section
+	EOS
 	//IMPORT - #import
 	IMPORT
 	//DEFINE - #define
@@ -51,8 +47,9 @@ const (
 	ERROR
 	//PRAGMA - #pragma
 	PRAGMA
-	//LINE - #line
-	LINE
+	// //LINE - #line
+	// LINE
+
 	//WARN - #warn
 	WARN
 	//IFDEF - #ifdef
@@ -99,4 +96,8 @@ const (
 	A
 	//B - b reg
 	B
+	//PC - pc reg
+	PC
+	//NR - no reg
+	NR
 )

@@ -4,8 +4,10 @@ package libpreproc
 type Reg int
 
 const (
-	a Reg = 0
-	b Reg = 1
+	nr Reg = -1
+	a  Reg = 0
+	b  Reg = 1
+	pc Reg = 2
 )
 
 //Ident - identifier
@@ -63,11 +65,11 @@ type Import struct {
 	name Ident
 }
 
-//Line - #line
-type Line struct {
-	name       Ident
-	lineNumber Ident
-}
+// //Line - #line
+// type Line struct {
+// 	name       Ident
+// 	lineNumber Ident
+// }
 
 //Warn - #warn
 type Warn struct {
@@ -129,6 +131,10 @@ type Return struct {
 }
 
 //Opcodes
+
+//Opcode - opcode interface
+type Opcode interface {
+}
 
 //Add - add
 type Add struct {

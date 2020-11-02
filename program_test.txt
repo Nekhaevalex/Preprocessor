@@ -1,0 +1,15 @@
+section .data
+    number: 200
+section .text
+    #ifdef A
+        #warn "In block 1"
+        #ifdef B
+            #warn "In subblock 1"
+        #else
+            #warn "In subblock 2"
+        #endif
+    #else
+        #warn "In block 2"
+    #endif
+test.main:
+    #error "End"

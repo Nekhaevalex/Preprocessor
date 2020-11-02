@@ -1,0 +1,27 @@
+{
+  "ENTRY": "main",
+  "ARCHITECTURE": "td8",
+  "SEARCH_DIR": "./",
+  "OUTPUT": "test.bin",
+  "REL_JMP": true,
+  "MEMORY": {
+    "ROM": {
+      "ORIGIN": 0,
+      "LENGTH": 1024
+    },
+    "RAM": {
+      "ORIGIN": 1025,
+      "LENGTH": 1024
+    }
+  },
+  "SECTIONS": {
+    "ROM": [
+      ".kernel_base",
+      ".text",
+      ".kernel_end"
+    ],
+    "RAM": [
+      ".data"
+    ]
+  }
+}

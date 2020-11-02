@@ -11,11 +11,11 @@ func isWhiteSpace(ch rune) bool {
 }
 
 func isLetter(ch rune) bool {
-	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '#' || ch == '.'
+	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '#' || ch == '.' || ch == '$'
 }
 
 func isDigit(ch rune) bool {
-	return (ch >= '0' && ch <= '9')
+	return (ch >= '0' && ch <= '9' || ch == '+' || ch == '-')
 }
 
 var eof = rune(0)
@@ -125,8 +125,8 @@ func (s *Scanner) scanIdent() (tok Token, lit string) {
 		return ERROR, buf.String()
 	case "#pragma":
 		return PRAGMA, buf.String()
-	case "#line":
-		return LINE, buf.String()
+	// case "#line":
+	// 	return LINE, buf.String()
 	case "#warn":
 		return WARN, buf.String()
 	case "#ifdef":
@@ -167,6 +167,10 @@ func (s *Scanner) scanIdent() (tok Token, lit string) {
 		return A, buf.String()
 	case "b":
 		return B, buf.String()
+	case "pc":
+		return PC, buf.String()
+	case "$":
+		return LOC, buf.String()
 	}
 
 	return IDENT, buf.String()

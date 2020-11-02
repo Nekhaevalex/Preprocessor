@@ -6,9 +6,18 @@ import (
 	"strconv"
 )
 
+//Module represents program with all its imports
+type Module struct {
+	macroList []string
+	labelList []string
+	main      Program
+	imports   []Program
+}
+
 //Parser represents a parser
 type Parser struct {
 	macroList []string
+	labelList []string
 	s         *Scanner
 	buf       struct {
 		tok Token  //last read token
@@ -94,7 +103,7 @@ func (p *Parser) ParseBlock() (Block, error) {
 	var block Block
 	for {
 		stmt, err := p.Parse()
-		if stmt == EOF {
+		if stmt == EOF || stmt == ENDIF || stmt == EOS || stmt == ELSE {
 			break
 		}
 		if err != nil {
@@ -112,14 +121,14 @@ func (p *Parser) Parse() (Stmt, error) {
 	var er error
 	switch tok {
 	case SECTION:
+		stmt, er = EOS, nil
 		p.unscan()
-		stmt, er = EOF, nil
 	case DEFINE:
 		stmt, er = p.ParseDefine()
 	case IMPORT:
 		stmt, er = p.ParseImport()
-	case LINE:
-		stmt, er = p.ParseLine()
+	// case LINE:
+	// 	stmt, er = p.ParseLine()
 	case WARN:
 		stmt, er = p.ParseWarn()
 	case SUMDEF:
@@ -141,21 +150,39 @@ func (p *Parser) Parse() (Stmt, error) {
 		er = nil
 	case ELSE:
 		p.unscan()
-		stmt = EOF
+		stmt = ELSE
 		er = nil
 	case ENDIF:
-		stmt = EOF
+		p.unscan()
+		stmt = ENDIF
 		er = nil
 	case RETURN:
 		stmt, er = p.ParseReturn()
 	case MACRO:
 		stmt, er = p.ParseMacro()
 	case ENDMACRO:
-		stmt = EOF
+		stmt = ENDMACRO
 		er = nil
+	case ADD:
+		stmt, er = p.ParseAdd()
+	case MOV:
+		stmt, er = p.ParseMov()
+	case IN:
+		stmt, er = p.ParseIn()
+	case OUT:
+		stmt, er = p.ParseOut()
+	case CMP:
+		stmt, er = p.ParseCmp()
+	case JMP:
+		stmt, er = p.ParseJmp()
+	case JNC:
+		stmt, er = p.ParseJnc()
 	case IDENT:
 		p.unscan()
 		stmt, er = p.ParseIdent()
+	case LOC:
+		stmt = LOC
+		er = nil
 	}
 	switch stmt.(type) {
 	case *Variable:
@@ -175,7 +202,7 @@ func (p *Parser) ParseDefine() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Define{name: name, definition: definition}, nil
+	return Define{name: name, definition: definition}, nil
 }
 
 //ParseImport - #import
@@ -184,21 +211,21 @@ func (p *Parser) ParseImport() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Import{name: name}, nil
+	return Import{name: name}, nil
 }
 
-//ParseLine - #line
-func (p *Parser) ParseLine() (Stmt, error) {
-	name, err := p.ParseIdent()
-	if err != nil {
-		return nil, err
-	}
-	lineNumber, err := p.ParseIdent()
-	if err != nil {
-		return nil, err
-	}
-	return &Line{name: name, lineNumber: lineNumber}, nil
-}
+// //ParseLine - #line
+// func (p *Parser) ParseLine() (Stmt, error) {
+// 	name, err := p.ParseIdent()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	lineNumber, err := p.ParseIdent()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return Line{name: name, lineNumber: lineNumber}, nil
+// }
 
 //ParseWarn - #warn
 func (p *Parser) ParseWarn() (Stmt, error) {
@@ -206,7 +233,7 @@ func (p *Parser) ParseWarn() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Warn{message: message}, nil
+	return Warn{message: message}, nil
 }
 
 //ParseSumDef - #sumdef
@@ -219,7 +246,7 @@ func (p *Parser) ParseSumDef() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Sumdef{def1: def1, def2: def2}, nil
+	return Sumdef{def1: def1, def2: def2}, nil
 }
 
 //ParseResDef - #resdef
@@ -232,7 +259,7 @@ func (p *Parser) ParseResDef() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Resdef{def1: def1, def2: def2}, nil
+	return Resdef{def1: def1, def2: def2}, nil
 }
 
 //ParsePext - #pext
@@ -245,7 +272,7 @@ func (p *Parser) ParsePext() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Pext{pextName: pextName, pextAddress: pextAddress}, nil
+	return Pext{pextName: pextName, pextAddress: pextAddress}, nil
 }
 
 //ParseError - #error
@@ -254,7 +281,7 @@ func (p *Parser) ParseError() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Error{message: message}, nil
+	return Error{message: message}, nil
 }
 
 //ParseUndef - #undef
@@ -263,7 +290,7 @@ func (p *Parser) ParseUndef() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Undef{definition: definition}, nil
+	return Undef{definition: definition}, nil
 }
 
 //ParseIfdef - #ifdef
@@ -280,10 +307,13 @@ func (p *Parser) ParseIfdef() (Stmt, error) {
 		if err != nil {
 			return nil, err
 		}
+		_, _ = p.scanIgnoreWhitespace()
 	} else {
-		p.unscan()
+		if tok != ENDIF {
+			p.unscan()
+		}
 	}
-	return &Ifdef{definition: definition, bodyTrue: bodyTrue, bodyFalse: bodyFalse}, nil
+	return Ifdef{definition: definition, bodyTrue: bodyTrue, bodyFalse: bodyFalse}, nil
 }
 
 //ParseIfndef - #ifdef
@@ -303,7 +333,7 @@ func (p *Parser) ParseIfndef() (Stmt, error) {
 	} else {
 		p.unscan()
 	}
-	return &Ifndef{definition: definition, bodyTrue: bodyTrue, bodyFalse: bodyFalse}, nil
+	return Ifndef{definition: definition, bodyTrue: bodyTrue, bodyFalse: bodyFalse}, nil
 }
 
 //ParseReturn - #return
@@ -312,36 +342,45 @@ func (p *Parser) ParseReturn() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Return{returnValue: returnName}, nil
+	return Return{returnValue: returnName}, nil
 }
 
 //ParseIdent - parses any unknown words: variables, strings, numbers,
 //labels and macro calls
-func (p *Parser) ParseIdent() (Stmt, error) {
+func (p *Parser) ParseIdent() (Ident, error) {
 	tok, ident := p.scanIgnoreWhitespace()
 	switch tok {
 	case IDENT: //macrocall, variable, number
 		//test for number
 		isNum, num := numberIdent(ident)
 		if isNum {
-			return &Number{value: num}, nil
+			return Number{value: num}, nil
 		}
 		tok, _ := p.scanIgnoreWhitespace()
 		switch tok {
 		//Test if it's a label: next token should be COLON
 		case COLON:
-			return &Label{name: &Variable{name: ident}}, nil
+			p.labelList = append(p.labelList, ident)
+			colErr := p.checkLabelMacroCollision(ident)
+			if colErr != nil {
+				return nil, colErr
+			}
+			return Label{name: Variable{name: ident}}, nil
 		default:
 			p.unscan()
 			_, foundMacro := find(p.macroList, ident)
 			if foundMacro {
-				return p.ParseMacroCall()
+				return p.ParseMacroCall(ident)
 			}
-			return &Variable{name: ident}, nil
+			label, foundLabel := find(p.labelList, ident)
+			if foundLabel {
+				return Label{name: Variable{name: p.labelList[label]}}, nil
+			}
+			return Variable{name: ident}, nil
 		}
 	case QUOTE: //SimpleString
 		str := p.getStringValue()
-		return &SimpleString{value: str}, nil
+		return SimpleString{value: str}, nil
 	default: //Else (???)
 		return nil, fmt.Errorf("forbidden symbol %q in context", ident)
 	}
@@ -350,6 +389,10 @@ func (p *Parser) ParseIdent() (Stmt, error) {
 //ParseMacro - #macro
 func (p *Parser) ParseMacro() (Stmt, error) {
 	tok, macroName := p.scanIgnoreWhitespace()
+	colErr := p.checkLabelMacroCollision(macroName)
+	if colErr != nil {
+		return nil, colErr
+	}
 	if tok != IDENT {
 		return nil, fmt.Errorf("macro name expected, met %q", macroName)
 	}
@@ -370,7 +413,11 @@ func (p *Parser) ParseMacro() (Stmt, error) {
 		return nil, err
 	}
 	p.rememberMacro(macroName)
-	return &Macro{macroName: macroName, args: args, body: body}, nil
+	colErr = p.checkLabelMacroCollision(macroName)
+	if colErr != nil {
+		return nil, colErr
+	}
+	return Macro{macroName: macroName, args: args, body: body}, nil
 }
 
 func hasNewLine(str string) bool {
@@ -384,8 +431,195 @@ func hasNewLine(str string) bool {
 }
 
 //ParseMacroCall - parses any macro call
-func (p *Parser) ParseMacroCall() (Stmt, error) {
-	return nil, nil
+func (p *Parser) ParseMacroCall(macroName string) (Stmt, error) {
+	var args []Ident
+	tok, arg := p.scan()
+	for {
+		if tok == IDENT {
+			p.unscan()
+			stmt, er := p.ParseIdent()
+			if er != nil {
+				return nil, er
+			}
+			args = append(args, stmt)
+		} else if tok == WS {
+			if hasNewLine(arg) == true {
+				break
+			}
+		}
+		tok, arg = p.scan()
+	}
+	return MacroCall{macroName: macroName, args: args}, nil
+}
+
+//ParseAdd - add
+func (p *Parser) ParseAdd() (Opcode, error) {
+	reg, err := p.ParseReg()
+	if err != nil {
+		return nil, err
+	}
+	tok, _ := p.scanIgnoreWhitespace()
+	if tok != COMMA {
+		p.unscan()
+	}
+	value, err := p.ParseIdent()
+	if err != nil {
+		return nil, err
+	}
+	return Add{reg: reg, value: value}, nil
+}
+
+//ParseMov - mov
+func (p *Parser) ParseMov() (Opcode, error) {
+	reg1, err := p.ParseReg()
+	if err != nil {
+		return nil, err
+	}
+	tok, _ := p.scanIgnoreWhitespace()
+	if tok != COMMA {
+		p.unscan()
+	}
+	tok, lit := p.scanIgnoreWhitespace()
+	p.unscan()
+	reg2 := nr
+	var val Ident
+	if tok == A || tok == B || tok == PC {
+		reg2, err = p.ParseReg()
+		if err != nil {
+			return nil, err
+		}
+		tok, _ = p.scanIgnoreWhitespace()
+		p.unscan()
+		if tok == IDENT {
+			val, err = p.ParseIdent()
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else if tok == IDENT {
+		val, err = p.ParseIdent()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("expected reg or ident, met %q", lit)
+	}
+	return Mov{reg1: reg1, reg2: reg2, fa: val}, nil
+}
+
+//ParseIn - in
+func (p *Parser) ParseIn() (Opcode, error) {
+	reg, er := p.ParseReg()
+	if er != nil {
+		return nil, er
+	}
+	return In{reg: reg}, nil
+}
+
+//ParseOut - out
+func (p *Parser) ParseOut() (Opcode, error) {
+	tok, lit := p.scanIgnoreWhitespace()
+	p.unscan()
+	reg := nr
+	var val Ident
+	var err error
+	if tok == A || tok == B {
+		reg, err = p.ParseReg()
+		if err != nil {
+			return nil, err
+		}
+		tok, _ = p.scanIgnoreWhitespace()
+		p.unscan()
+		if tok == IDENT {
+			val, err = p.ParseIdent()
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else if tok == IDENT {
+		val, err = p.ParseIdent()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("expected reg a, reg b or ident, met %q", lit)
+	}
+	return Out{reg: reg, fa: val}, nil
+}
+
+//ParseCmp - cmp
+func (p *Parser) ParseCmp() (Opcode, error) {
+	regA, err := p.ParseReg()
+	if err != nil {
+		return nil, err
+	}
+	tok, _ := p.scanIgnoreWhitespace()
+	if tok != COMMA {
+		p.unscan()
+	}
+	regB, err := p.ParseReg()
+	if err != nil {
+		return nil, err
+	}
+	tok, _ = p.scanIgnoreWhitespace()
+	if tok != COMMA {
+		p.unscan()
+	}
+	op, err := p.ParseIdent()
+	return Cmp{regA: regA, regB: regB, operation: op}, nil
+}
+
+//ParseJmp - jmp
+func (p *Parser) ParseJmp() (Opcode, error) {
+	tok, _ := p.scanIgnoreWhitespace()
+	if tok == IDENT {
+		p.unscan()
+		addr, err := p.ParseIdent()
+		if err != nil {
+			return nil, err
+		}
+		return Jmp{regB: nr, addr: addr}, nil
+	}
+	p.unscan()
+	reg, err := p.ParseReg()
+	if err != nil {
+		return nil, err
+	}
+	return Jmp{regB: reg, addr: nil}, nil
+}
+
+//ParseJnc - jnc
+func (p *Parser) ParseJnc() (Opcode, error) {
+	tok, _ := p.scanIgnoreWhitespace()
+	if tok == IDENT {
+		p.unscan()
+		addr, err := p.ParseIdent()
+		if err != nil {
+			return nil, err
+		}
+		return Jnc{regB: nr, addr: addr}, nil
+	}
+	p.unscan()
+	reg, err := p.ParseReg()
+	if err != nil {
+		return nil, err
+	}
+	return Jnc{regB: reg, addr: nil}, nil
+}
+
+//ParseReg - parses any register
+func (p *Parser) ParseReg() (Reg, error) {
+	tok, reg := p.scanIgnoreWhitespace()
+	switch tok {
+	case A:
+		return a, nil
+	case B:
+		return b, nil
+	case PC:
+		return pc, nil
+	default:
+		return nr, fmt.Errorf("expected register, met %q", reg)
+	}
 }
 
 func find(slice []string, val string) (int, bool) {
@@ -432,4 +666,13 @@ func numberIdent(num string) (bool, int) {
 
 func (p *Parser) rememberMacro(macroName string) {
 	p.macroList = append(p.macroList, macroName)
+}
+
+func (p *Parser) checkLabelMacroCollision(ident string) error {
+	_, isLabel := find(p.labelList, ident)
+	_, isMacro := find(p.macroList, ident)
+	if isMacro && isLabel {
+		return fmt.Errorf("ident %q already exists", ident)
+	}
+	return nil
 }
